@@ -7,12 +7,22 @@ from .GPH_marker_spacing_props import GPH_marker_spacing_properties
 from .GPH_keyframe_props import GPH_LayerKeyframeSettings, GPH_KeyframeProperties
 from .GPH_keyframe_spacing_props import GPH_KeyframeSpacingProps
 
+# NEW IMPORTS
+from .GPH_breakdown_props import GPH_BreakdownProps
+from .GPH_flip_flop_props import GPH_FlipFlopProps
+from .GPH_light_table_props import GPH_LightTableProps
+
 classes = (
     GPH_dissolve_properties,
     GPH_marker_spacing_properties,
     GPH_LayerKeyframeSettings,
     GPH_KeyframeProperties,
     GPH_KeyframeSpacingProps,
+
+    # NEW PROPERTIES
+    GPH_BreakdownProps,
+    GPH_FlipFlopProps,
+    GPH_LightTableProps,
 )
 
 def register():
@@ -23,6 +33,11 @@ def register():
     bpy.types.Scene.gph_marker_spacing_props = PointerProperty(type=GPH_marker_spacing_properties)
     bpy.types.Scene.gph_keyframe_props = PointerProperty(type=GPH_KeyframeProperties)
     bpy.types.Scene.gph_keyframe_spacing_props = PointerProperty(type=GPH_KeyframeSpacingProps)
+
+    # NEW PROPERTY REGISTRATIONS
+    bpy.types.Scene.gph_breakdown_props = PointerProperty(type=GPH_BreakdownProps)
+    bpy.types.Scene.gph_flip_flop_props = PointerProperty(type=GPH_FlipFlopProps)
+    bpy.types.Scene.gph_light_table_props = PointerProperty(type=GPH_LightTableProps)
 
 def unregister():
     for cls in reversed(classes):
@@ -36,3 +51,11 @@ def unregister():
         del bpy.types.Scene.gph_keyframe_props
     if hasattr(bpy.types.Scene, 'gph_keyframe_spacing_props'):
         del bpy.types.Scene.gph_keyframe_spacing_props
+
+    # NEW PROPERTY CLEANUP
+    if hasattr(bpy.types.Scene, 'gph_breakdown_props'):
+        del bpy.types.Scene.gph_breakdown_props
+    if hasattr(bpy.types.Scene, 'gph_flip_flop_props'):
+        del bpy.types.Scene.gph_flip_flop_props
+    if hasattr(bpy.types.Scene, 'gph_light_table_props'):
+        del bpy.types.Scene.gph_light_table_props
