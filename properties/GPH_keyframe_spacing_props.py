@@ -11,3 +11,8 @@ class GPH_KeyframeSpacingProps(PropertyGroup):
         max=100
     )
     
+    ripple_edit: BoolProperty(
+        name="Ripple Edit",
+        description="Move subsequent keyframes proportionally to preserve all frames",
+        default=True
+    )
