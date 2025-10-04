@@ -15,17 +15,24 @@ class GPH_PT_flip_flop_panel(Panel):
         props = context.scene.gph_flip_flop_props
         scene = context.scene
 
-        # Status indicator
+        # Status indicator - FIXED HEIGHT to prevent button jumping
         box = layout.box()
-        row = box.row()
-
+        col = box.column(align=True)
+        
+        # First row - always shown
+        row = col.row()
         if props.is_flopped:
             row.alert = True
             row.label(text=f"FLOPPED → Frame {scene.frame_current}", icon='DECORATE_KEYFRAME')
-            row = box.row()
-            row.label(text=f"Original: {props.original_frame}")
         else:
             row.label(text=f"Current Frame: {scene.frame_current}", icon='KEYFRAME')
+        
+        # Second row - always present (either shows original or is empty)
+        row = col.row()
+        if props.is_flopped:
+            row.label(text=f"Original: {props.original_frame}")
+        else:
+            row.label(text="")  # Empty label to maintain height
 
         layout.separator()
 
@@ -34,7 +41,7 @@ class GPH_PT_flip_flop_panel(Panel):
         row.scale_y = 2.0
 
         flip_icon = 'LOOP_BACK' if props.is_flopped else 'LOOP_FORWARDS'
-        row.operator("gph.flip_flop_toggle", text="FLIP/FLOP", icon=flip_icon)
+        row.operator("gph.flip_flop_toggle", text="FLIP/FLOP", icon=flip_icon, depress=props.is_flopped)
 
         layout.separator()
 

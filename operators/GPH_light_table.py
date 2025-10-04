@@ -16,17 +16,23 @@ class GPH_OT_toggle_light_table(Operator):
     def execute(self, context):
         props = context.scene.gph_light_table_props
         print(f"Light table toggle execute - currently enabled: {props.enabled}")
+        
+        # Get the actual source object (not the reference duplicate)
+        source_obj = self.get_source_object(context)
+        if not source_obj:
+            self.report({'ERROR'}, "No valid Grease Pencil object found")
+            return {'CANCELLED'}
 
         if props.enabled:
             # Disable light table
             print("Disabling light table...")
-            self.disable_light_table(context)
+            self.disable_light_table(context, source_obj)
             props.enabled = False
             self.report({'INFO'}, "Light table disabled")
         else:
             # Enable light table
             print("Enabling light table...")
-            success = self.enable_light_table(context)
+            success = self.enable_light_table(context, source_obj)
             if success:
                 props.enabled = True
                 self.report({'INFO'}, "Light table enabled")
@@ -37,11 +43,33 @@ class GPH_OT_toggle_light_table(Operator):
                 return {'CANCELLED'}
 
         return {'FINISHED'}
+    
+    def get_source_object(self, context):
+        """Get the source GP object, even if duplicate is selected"""
+        obj = context.active_object
+        
+        if not obj or obj.type != 'GREASEPENCIL':
+            return None
+        
+        # Check if this is a light table reference duplicate
+        if "_LIGHT_TABLE_REF" in obj.name:
+            # This is a duplicate, find the original
+            original_name = obj.name.replace("_LIGHT_TABLE_REF", "")
+            if original_name in bpy.data.objects:
+                return bpy.data.objects[original_name]
+            else:
+                # Fallback: search for any object that references this duplicate
+                for potential_source in bpy.data.objects:
+                    if potential_source.type == 'GREASEPENCIL':
+                        ref_name = potential_source.get("gph_light_table_ref")
+                        if ref_name == obj.name:
+                            return potential_source
+        
+        return obj
 
-    def enable_light_table(self, context):
+    def enable_light_table(self, context, source_obj):
         """Create and show light table reference"""
         props = context.scene.gph_light_table_props
-        source_obj = context.active_object
 
         # Store reference frame if lock_to_current
         if props.lock_to_current:
@@ -52,10 +80,8 @@ class GPH_OT_toggle_light_table(Operator):
         # Create reference object
         return self.create_reference_object(context, source_obj)
 
-    def disable_light_table(self, context):
+    def disable_light_table(self, context, source_obj):
         """Remove light table reference"""
-        source_obj = context.active_object
-
         # Find and remove reference object
         ref_obj_name = source_obj.get("gph_light_table_ref")
 
@@ -71,7 +97,7 @@ class GPH_OT_toggle_light_table(Operator):
         props = context.scene.gph_light_table_props
         
         # Remove old reference if exists
-        self.disable_light_table(context)
+        self.disable_light_table(context, source_obj)
         
         try:
             # Duplicate the GP object
@@ -148,6 +174,15 @@ class GPH_OT_set_reference_frame(Operator):
 
     def execute(self, context):
         props = context.scene.gph_light_table_props
+        
+        # Get the actual source object (not the reference duplicate)
+        toggle_op = GPH_OT_toggle_light_table()
+        source_obj = toggle_op.get_source_object(context)
+        
+        if not source_obj:
+            self.report({'ERROR'}, "No valid Grease Pencil object found")
+            return {'CANCELLED'}
+        
         props.reference_frame = context.scene.frame_current
 
         # Update if already enabled
@@ -166,7 +201,10 @@ class GPH_OT_update_light_table(Operator):
 
     def execute(self, context):
         props = context.scene.gph_light_table_props
-        source_obj = context.active_object
+        
+        # Get the actual source object (not the reference duplicate)
+        toggle_op = GPH_OT_toggle_light_table()
+        source_obj = toggle_op.get_source_object(context)
 
         if not props.enabled or not source_obj:
             return {'CANCELLED'}
@@ -223,7 +261,14 @@ class GPH_OT_clear_reference(Operator):
         props = context.scene.gph_light_table_props
 
         if props.enabled:
-            bpy.ops.gph.toggle_light_table()
+            # Get the actual source object before disabling
+            toggle_op = GPH_OT_toggle_light_table()
+            source_obj = toggle_op.get_source_object(context)
+            
+            if source_obj:
+                # Disable using the source object
+                toggle_op.disable_light_table(context, source_obj)
+                props.enabled = False
 
         props.reference_frame = 1
 
