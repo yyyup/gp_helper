@@ -35,16 +35,23 @@ modules = [
 def register():
     # Load custom icons first
     utils.load_icons()
-    
+
     # Register modules
     for module in modules:
         module.register()
 
+    # Register file load handler to refresh icons
+    bpy.app.handlers.load_post.append(utils.load_icons_on_file_load)
+
 def unregister():
+    # Unregister file load handler
+    if utils.load_icons_on_file_load in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(utils.load_icons_on_file_load)
+
     # Unregister modules
     for module in reversed(modules):
         module.unregister()
-    
+
     # Unload custom icons
     utils.unload_icons()
 

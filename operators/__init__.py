@@ -34,6 +34,7 @@ from .GPH_light_table import (
     GPH_OT_clear_reference,
     GPH_OT_jump_to_reference
 )
+from .GPH_refresh_icons import GPH_OT_refresh_icons
 
 classes = (
     # Existing operators
@@ -70,6 +71,9 @@ classes = (
     GPH_OT_update_light_table,
     GPH_OT_clear_reference,
     GPH_OT_jump_to_reference,
+
+    # NEW: Utility operators
+    GPH_OT_refresh_icons,
 )
 
 def register():

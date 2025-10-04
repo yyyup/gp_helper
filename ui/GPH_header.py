@@ -27,7 +27,7 @@ def draw_gp_helper_header(self, context):
     flip_flop_custom_icon = get_icon("gph_flip_flop")
     
     # Main flip/flop button - use custom icon if available
-    if flip_flop_custom_icon:
+    if flip_flop_custom_icon and flip_flop_custom_icon > 0:
         row.operator("gph.flip_flop_toggle", text="", icon_value=flip_flop_custom_icon, depress=props.is_flopped)
     else:
         # Fallback to default Blender icons
@@ -52,11 +52,11 @@ def draw_gp_helper_header(self, context):
     light_table_custom_icon = get_icon("gph_light_table")
     
     # Toggle button with visual feedback
-    if light_table_custom_icon:
+    if light_table_custom_icon and light_table_custom_icon > 0:
         # Use custom icon
         if lt_props.enabled:
             row.alert = True
-        row.operator("gph.toggle_light_table", text="LT", icon_value=light_table_custom_icon, depress=lt_props.enabled)
+        row.operator("gph.toggle_light_table", text="", icon_value=light_table_custom_icon, depress=lt_props.enabled)
     else:
         # Fallback to default icons
         if lt_props.enabled:
@@ -76,14 +76,6 @@ def draw_gp_helper_header(self, context):
     # Eyedropper to set reference
     row.operator("gph.set_reference_frame", text="", icon='EYEDROPPER')
     
-    # Reference frame (compact)
-    sub = row.row(align=True)
-    sub.scale_x = 0.6
-    sub.prop(lt_props, "reference_frame", text="")
-    
-    # Eyedropper to set reference
-    row.operator("gph.set_reference_frame", text="", icon='EYEDROPPER')
-    
     layout.separator()
     
     # === KEYFRAME MOVER ===
@@ -94,12 +86,12 @@ def draw_gp_helper_header(self, context):
     backward_icon = get_icon("gph_move_backward")
     forward_icon = get_icon("gph_move_forward")
     
-    if backward_icon:
+    if backward_icon and backward_icon > 0:
         row.operator("gph.keyframe_mover_backward", text="", icon_value=backward_icon)
     else:
         row.operator("gph.keyframe_mover_backward", text="", icon='BACK')
     
-    if forward_icon:
+    if forward_icon and forward_icon > 0:
         row.operator("gph.keyframe_mover_forward", text="", icon_value=forward_icon)
     else:
         row.operator("gph.keyframe_mover_forward", text="", icon='FORWARD')
@@ -118,7 +110,7 @@ def draw_gp_helper_header(self, context):
     # Custom icon for spacing if available
     spacing_icon = get_icon("gph_keyframe_spacing")
     
-    if spacing_icon:
+    if spacing_icon and spacing_icon > 0:
         row.label(text="", icon_value=spacing_icon)
     else:
         row.label(text="", icon='KEYFRAME_HLT')
@@ -134,7 +126,7 @@ def draw_gp_helper_header(self, context):
     op.ripple_edit = spacing_props.ripple_edit
     
     layout.separator()
-    
+
     # === MORE TOOLS MENU ===
     layout.menu("DOPESHEET_MT_gp_helper_tools", text="", icon='DOWNARROW_HLT')
 
@@ -170,7 +162,7 @@ class DOPESHEET_MT_gp_helper_tools(Menu):
         layout.separator()
         
         # === ONION SKIN QUICK ACCESS ===
-        layout.label(text="Onion Skin", icon='ONIONSKIN')
+        layout.label(text="Onion Skin", icon='ONIONSKIN_ON')
         
         gp_data = obj.data
         

@@ -9,6 +9,10 @@ class GPH_PT_keyframe_panel(Panel):
     bl_region_type = 'UI'
     bl_category = 'GP Helper'
 
+    def draw_header(self, context):
+        layout = self.layout
+        layout.operator("gph.refresh_icons", text="", icon='FILE_REFRESH', emboss=False)
+
     def draw(self, context):
         layout = self.layout
         props = context.scene.gph_keyframe_props
