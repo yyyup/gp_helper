@@ -1,0 +1,108 @@
+# key_graph_editor_lock_transforms_kmi_active.py
+# Key maps for the Timeline Tools addon
+# This keymaps are registering the zoom to frame the selected keyframes in the Graph Editor and Dope Sheet Editor
+
+import bpy
+from .keymaps_utils import toggle_keymaps, unregister_keymaps, register_keymaps
+
+
+keymaps_to_toggle = [
+    # (Keymap definition, operator_idname, event_type, {event_value(s)}, {modifiers}, {properties})
+    # {
+    #     "name": "Graph Editor",
+    #     "space_type": "GRAPH_EDITOR",
+    #     "region_type": "WINDOW",
+    #     "operator_idname": "transform.translate",
+    #     "type": "LEFTMOUSE",
+    #     "event_value": {"value": "CLICK_DRAG", "direction": "ANY"},
+    #     "modifiers": {},
+    #     "properties": {
+    #         # "use_snap_self": True,
+    #         # "use_snap_edit": True,
+    #         # "use_snap_nonedit": True,
+    #     },
+    # },
+    # {
+    #     "name": "Graph Editor",
+    #     "space_type": "GRAPH_EDITOR",
+    #     "region_type": "WINDOW",
+    #     "operator_idname": "graph.select_box",
+    #     "type": "LEFTMOUSE",
+    #     "event_value": {"value": "CLICK_DRAG", "direction": "ANY"},
+    #     "modifiers": {},
+    #     "properties": {
+    #         # "tweak": True,
+    #         # "include_handles": True,
+    #         # "use_curve_selection": True,
+    #         # "wait_for_input": True,
+    #     },
+    # },
+]
+
+keymaps_to_register = [
+    # (Keymap definition, operator_idname, event_type, event_value, modifiers, properties)
+    {
+        "name": "Graph Editor",
+        "space_type": "GRAPH_EDITOR",
+        "region_type": "WINDOW",
+        "operator_idname": "anim.amp_zoom_frame_editors",
+        "type": "Z",
+        "event_value": {"value": "PRESS"},
+        "modifiers": {"shift": True},
+        "properties": {},
+    },
+    {
+        "name": "Graph Editor",
+        "space_type": "DOPESHEET_EDITOR",
+        "region_type": "WINDOW",
+        "operator_idname": "anim.amp_zoom_frame_editors",
+        "type": "Z",
+        "event_value": {"value": "PRESS"},
+        "modifiers": {"shift": True},
+        "properties": {},
+    },
+    {
+        "name": "Graph Editor",
+        "space_type": "GRAPH_EDITOR",
+        "region_type": "WINDOW",
+        "operator_idname": "anim.amp_smart_zoom_frame_editors",
+        "type": "Z",
+        "event_value": {},
+        "modifiers": {},
+        "properties": {"frame_range_smart_zoom": 0},
+    },
+    {
+        "name": "Graph Editor",
+        "space_type": "DOPESHEET_EDITOR",
+        "region_type": "WINDOW",
+        "operator_idname": "anim.amp_smart_zoom_frame_editors",
+        "type": "Z",
+        "event_value": {},
+        "modifiers": {},
+        "properties": {"frame_range_smart_zoom": 0},
+    },
+    # {
+    #     "name": "Graph Editor",
+    #     "space_type": "GRAPH_EDITOR",
+    #     "region_type": "WINDOW",
+    #     "operator_idname": "anim.amp_isolate_selected_fcurves",
+    #     "type": "W",
+    #     "event_value": {"value": "PRESS"},
+    #     "modifiers": {},
+    #     "properties": {},
+    # },
+]
+
+
+def register():
+    # toggle_keymaps(keymaps_to_toggle, False)
+    register_keymaps(keymaps_to_register)
+
+
+def unregister():
+    unregister_keymaps(keymaps_to_register)
+    # toggle_keymaps(keymaps_to_toggle, True)
+
+
+if __name__ == "__main__":
+    register()

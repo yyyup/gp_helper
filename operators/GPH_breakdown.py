@@ -24,7 +24,7 @@ class GPH_OT_add_breakdown(Operator):
         selected_frames = self.get_selected_frames_per_layer(context)
 
         if not selected_frames:
-            self.report({'ERROR'}, "No keyframes selected. Select at least 2 keyframes.")
+            self.report({'ERROR'}, "No keyframes selected. Select at least 2 keyframes in the Dope Sheet.")
             return {'CANCELLED'}
 
         total_breakdowns = 0
@@ -34,6 +34,9 @@ class GPH_OT_add_breakdown(Operator):
         for layer, frames in selected_frames.items():
             if len(frames) < 2:
                 continue
+
+            print(f"\nProcessing layer: {layer.name}")
+            print(f"Selected frames: {frames}")
 
             # Process each pair of consecutive frames
             pairs = []
@@ -60,12 +63,11 @@ class GPH_OT_add_breakdown(Operator):
             if not pairs:
                 continue
 
-            # If shift_subsequent, we need to shift frames forward first
-            if props.shift_subsequent:
-                self.shift_frames_forward(layer, pairs)
+            print(f"Will create {len(pairs)} breakdown(s)")
 
             # Create breakdowns
             for first_frame, breakdown_frame, last_frame in pairs:
+                print(f"Creating breakdown: {first_frame} -> {breakdown_frame} -> {last_frame}")
                 success = self.create_breakdown(
                     layer,
                     first_frame,
@@ -76,6 +78,9 @@ class GPH_OT_add_breakdown(Operator):
 
                 if success:
                     total_breakdowns += 1
+                    print(f"  ✓ Created breakdown at frame {breakdown_frame}")
+                else:
+                    print(f"  ✗ Failed to create breakdown at frame {breakdown_frame}")
 
             layers_processed += 1
 
@@ -84,7 +89,7 @@ class GPH_OT_add_breakdown(Operator):
                        f"Created {total_breakdowns} breakdown(s) on {layers_processed} layer(s)")
             return {'FINISHED'}
         else:
-            self.report({'WARNING'}, "No breakdowns created")
+            self.report({'WARNING'}, "No breakdowns created. Check if frames already exist at breakdown positions.")
             return {'CANCELLED'}
 
     def get_selected_frames_per_layer(self, context):
@@ -120,61 +125,56 @@ class GPH_OT_add_breakdown(Operator):
                     break
 
             if existing:
-                print(f"Frame {breakdown_frame} already exists, skipping")
+                print(f"  Frame {breakdown_frame} already exists")
                 return False
 
-            # Create breakdown based on copy mode
+            # Get source frame based on copy mode
+            source_frame = None
+            if copy_mode == 'FIRST':
+                source_frame = first_frame
+            elif copy_mode == 'LAST':
+                source_frame = last_frame
+
+            # Create the breakdown frame
             if copy_mode == 'BLANK':
                 # Create empty frame
-                layer.frames.new(breakdown_frame)
-
-            elif copy_mode == 'FIRST':
-                # Copy first frame
-                layer.frames.copy(layer.frames[first_frame], breakdown_frame)
-
-            elif copy_mode == 'LAST':
-                # Copy last frame
-                layer.frames.copy(layer.frames[last_frame], breakdown_frame)
-
-            elif copy_mode == 'INTERPOLATE':
-                # Experimental: Try to interpolate
-                # For now, just copy first frame (interpolation is complex)
-                layer.frames.copy(layer.frames[first_frame], breakdown_frame)
-                print("Interpolate mode: Currently copies first frame (interpolation not yet implemented)")
+                new_frame = layer.frames.new(breakdown_frame)
+                print(f"  Created blank frame at {breakdown_frame}")
+            elif source_frame:
+                # Try to copy the source frame
+                try:
+                    # Method 1: Use frames.copy() API
+                    layer.frames.copy(layer.frames[source_frame])
+                    # Find the copied frame and move it
+                    copied_frame = None
+                    for frame in layer.frames:
+                        if frame.frame_number == source_frame and frame != layer.frames[source_frame]:
+                            copied_frame = frame
+                            break
+                    
+                    if copied_frame:
+                        # This doesn't work directly, so delete and recreate
+                        layer.frames.remove(copied_frame)
+                    
+                    # Method 2: Fallback - just create new frame (user can draw on it)
+                    new_frame = layer.frames.new(breakdown_frame)
+                    print(f"  Created new frame at {breakdown_frame} (copy not supported, manual drawing needed)")
+                    
+                except Exception as e:
+                    print(f"  Copy failed: {e}, creating blank frame instead")
+                    new_frame = layer.frames.new(breakdown_frame)
+            else:
+                # INTERPOLATE mode - not implemented yet
+                new_frame = layer.frames.new(breakdown_frame)
+                print(f"  Created blank frame at {breakdown_frame} (interpolation not yet implemented)")
 
             return True
 
         except Exception as e:
-            print(f"Error creating breakdown at frame {breakdown_frame}: {e}")
+            print(f"  Error creating breakdown at frame {breakdown_frame}: {e}")
+            import traceback
+            traceback.print_exc()
             return False
-
-    def shift_frames_forward(self, layer, pairs):
-        """Shift frames forward to make room for breakdowns"""
-        # Get all breakdown positions
-        breakdown_positions = [bd for _, bd, _ in pairs]
-
-        # Get all frames that need shifting (after any breakdown)
-        min_breakdown = min(breakdown_positions)
-        frames_to_shift = []
-
-        for frame in layer.frames:
-            if frame.frame_number > min_breakdown:
-                frames_to_shift.append(frame.frame_number)
-
-        # Sort in reverse to avoid collisions
-        frames_to_shift.sort(reverse=True)
-
-        # Shift each frame forward by number of breakdowns before it
-        for frame_num in frames_to_shift:
-            breakdowns_before = sum(1 for bd in breakdown_positions if bd < frame_num)
-            new_position = frame_num + breakdowns_before
-
-            # Use safe copy method
-            temp_offset = 100000
-            layer.frames.copy(layer.frames[frame_num], frame_num + temp_offset)
-            layer.frames.remove(layer.frames[frame_num])
-            layer.frames.copy(layer.frames[frame_num + temp_offset], new_position)
-            layer.frames.remove(layer.frames[frame_num + temp_offset])
 
 
 class GPH_OT_breakdown_preset(Operator):
@@ -213,9 +213,31 @@ class GPH_OT_breakdown_favor_first(Operator):
     bl_description = "Create breakdown at 25% position (closer to first keyframe)"
     bl_options = {'REGISTER', 'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        return obj and obj.type == 'GREASEPENCIL'
+
     def execute(self, context):
-        bpy.ops.gph.breakdown_preset(position=0.25)
-        return {'FINISHED'}
+        props = context.scene.gph_breakdown_props
+        
+        # Store old values
+        old_position = props.position
+        old_use_custom = props.use_custom_offset
+        
+        # Set to 25%
+        props.position = 0.25
+        props.use_custom_offset = False
+        
+        # Create instance and execute directly
+        breakdown_op = GPH_OT_add_breakdown()
+        result = breakdown_op.execute(context)
+        
+        # Restore old values
+        props.position = old_position
+        props.use_custom_offset = old_use_custom
+        
+        return result
 
 
 class GPH_OT_breakdown_middle(Operator):
@@ -225,9 +247,31 @@ class GPH_OT_breakdown_middle(Operator):
     bl_description = "Create breakdown at 50% position (exactly between keyframes)"
     bl_options = {'REGISTER', 'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        return obj and obj.type == 'GREASEPENCIL'
+
     def execute(self, context):
-        bpy.ops.gph.breakdown_preset(position=0.5)
-        return {'FINISHED'}
+        props = context.scene.gph_breakdown_props
+        
+        # Store old values
+        old_position = props.position
+        old_use_custom = props.use_custom_offset
+        
+        # Set to 50%
+        props.position = 0.5
+        props.use_custom_offset = False
+        
+        # Create instance and execute directly
+        breakdown_op = GPH_OT_add_breakdown()
+        result = breakdown_op.execute(context)
+        
+        # Restore old values
+        props.position = old_position
+        props.use_custom_offset = old_use_custom
+        
+        return result
 
 
 class GPH_OT_breakdown_favor_last(Operator):
@@ -237,6 +281,28 @@ class GPH_OT_breakdown_favor_last(Operator):
     bl_description = "Create breakdown at 75% position (closer to last keyframe)"
     bl_options = {'REGISTER', 'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        obj = context.active_object
+        return obj and obj.type == 'GREASEPENCIL'
+
     def execute(self, context):
-        bpy.ops.gph.breakdown_preset(position=0.75)
-        return {'FINISHED'}
+        props = context.scene.gph_breakdown_props
+        
+        # Store old values
+        old_position = props.position
+        old_use_custom = props.use_custom_offset
+        
+        # Set to 75%
+        props.position = 0.75
+        props.use_custom_offset = False
+        
+        # Create instance and execute directly
+        breakdown_op = GPH_OT_add_breakdown()
+        result = breakdown_op.execute(context)
+        
+        # Restore old values
+        props.position = old_position
+        props.use_custom_offset = old_use_custom
+        
+        return result

@@ -45,37 +45,16 @@ class GPH_PT_flip_flop_panel(Panel):
 
         layout.separator()
 
-        # Quick flip buttons
+        # Stored frame control
         box = layout.box()
-        box.label(text="Quick Flip:", icon='FORWARD')
-
-        row = box.row(align=True)
-        row.operator("gph.flip_to_previous", text="◀ Previous", icon='PREV_KEYFRAME')
-        row.operator("gph.flip_to_next", text="Next ▶", icon='NEXT_KEYFRAME')
+        box.label(text="Reference Frame:", icon='KEYFRAME_HLT')
+        
+        col = box.column(align=True)
+        col.prop(props, "stored_frame", text="Target Frame")
+        col.operator("gph.set_flip_frame", text="Set to Current", icon='EYEDROPPER')
 
         layout.separator()
 
-        # Mode selection
-        box = layout.box()
-        box.label(text="Flip Mode:", icon='SETTINGS')
-        box.prop(props, "flip_mode", text="")
-
-        # Show stored frame control if in STORED mode
-        if props.flip_mode == 'STORED':
-            col = box.column(align=True)
-            col.prop(props, "stored_frame", text="Target Frame")
-            col.operator("gph.set_flip_frame", text="Set to Current", icon='KEYFRAME_HLT')
-
-        layout.separator()
-
-        # Reset button
+        # Reset button - only show when flopped
         if props.is_flopped:
             layout.operator("gph.reset_flip_flop", text="Reset", icon='LOOP_BACK')
-
-        # Help
-        box = layout.box()
-        box.label(text="Tip:", icon='INFO')
-        col = box.column(align=True)
-        col.scale_y = 0.8
-        col.label(text="Add hotkey (Alt+F) in preferences")
-        col.label(text="for fastest workflow")
