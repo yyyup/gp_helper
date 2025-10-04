@@ -7,16 +7,18 @@ def update_active_layer(self, context):
     obj = context.active_object
     if obj and obj.type == 'GREASEPENCIL':
         gp_data = obj.data
-        if 0 <= self.active_layer_index < len(gp_data.layers):
-            gp_data.layers.active = gp_data.layers[self.active_layer_index]
+        layers_list = list(gp_data.layers)
+
+        if 0 <= self.active_layer_index < len(layers_list):
+            gp_data.layers.active = layers_list[self.active_layer_index]
 
 class GPH_LayerManagerProps(PropertyGroup):
     """Properties for layer manager"""
-    
+
     active_layer_index: IntProperty(
         name="Active Layer Index",
         description="Index of the active layer in the list",
         default=0,
         min=0,
-        update=update_active_layer  # This makes clicking update the active layer
+        update=update_active_layer
     )

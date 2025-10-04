@@ -42,10 +42,6 @@ from .GPH_layer_operations import (
     GPH_OT_layer_solo,
     GPH_OT_layer_duplicate,
     GPH_OT_layer_make_active,
-    GPH_OT_layer_move_up,
-    GPH_OT_layer_move_down,
-    GPH_OT_layer_add,
-    GPH_OT_layer_remove,
 )
 from .GPH_refresh_icons import GPH_OT_refresh_icons
 
@@ -89,10 +85,6 @@ classes = (
     GPH_OT_layer_solo,
     GPH_OT_layer_duplicate,
     GPH_OT_layer_make_active,
-    GPH_OT_layer_move_up,
-    GPH_OT_layer_move_down,
-    GPH_OT_layer_add,
-    GPH_OT_layer_remove,
 
     # NEW: Utility operators
     GPH_OT_refresh_icons,
