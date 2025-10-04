@@ -5,6 +5,7 @@ Adds tools to the Dope Sheet top bar
 
 import bpy
 from bpy.types import Header, Menu
+from ..utils import get_icon
 
 
 def draw_gp_helper_header(self, context):
@@ -22,9 +23,16 @@ def draw_gp_helper_header(self, context):
     props = context.scene.gph_flip_flop_props
     row = layout.row(align=True)
     
-    # Main flip/flop button
-    flip_icon = 'LOOP_BACK' if props.is_flopped else 'LOOP_FORWARDS'
-    op = row.operator("gph.flip_flop_toggle", text="", icon=flip_icon)
+    # Get custom flip/flop icon
+    flip_flop_custom_icon = get_icon("gph_flip_flop")
+    
+    # Main flip/flop button - use custom icon if available
+    if flip_flop_custom_icon:
+        row.operator("gph.flip_flop_toggle", text="", icon_value=flip_flop_custom_icon, depress=props.is_flopped)
+    else:
+        # Fallback to default Blender icons
+        flip_icon = 'LOOP_BACK' if props.is_flopped else 'LOOP_FORWARDS'
+        row.operator("gph.flip_flop_toggle", text="", icon=flip_icon, depress=props.is_flopped)
     
     # Stored frame input (compact)
     sub = row.row(align=True)
@@ -40,16 +48,33 @@ def draw_gp_helper_header(self, context):
     lt_props = context.scene.gph_light_table_props
     row = layout.row(align=True)
     
-    # Toggle button with visual feedback
-    if lt_props.enabled:
-        row.alert = True
-        icon = 'OUTLINER_OB_LIGHT'
-        text = "LT"
-    else:
-        icon = 'LIGHT'
-        text = "LT"
+    # Get custom light table icon
+    light_table_custom_icon = get_icon("gph_light_table")
     
-    row.operator("gph.toggle_light_table", text=text, icon=icon, depress=lt_props.enabled)
+    # Toggle button with visual feedback
+    if light_table_custom_icon:
+        # Use custom icon
+        if lt_props.enabled:
+            row.alert = True
+        row.operator("gph.toggle_light_table", text="LT", icon_value=light_table_custom_icon, depress=lt_props.enabled)
+    else:
+        # Fallback to default icons
+        if lt_props.enabled:
+            row.alert = True
+            icon = 'OUTLINER_OB_LIGHT'
+            text = "LT"
+        else:
+            icon = 'LIGHT'
+            text = "LT"
+        row.operator("gph.toggle_light_table", text=text, icon=icon, depress=lt_props.enabled)
+    
+    # Reference frame (compact)
+    sub = row.row(align=True)
+    sub.scale_x = 0.6
+    sub.prop(lt_props, "reference_frame", text="")
+    
+    # Eyedropper to set reference
+    row.operator("gph.set_reference_frame", text="", icon='EYEDROPPER')
     
     # Reference frame (compact)
     sub = row.row(align=True)
@@ -65,9 +90,19 @@ def draw_gp_helper_header(self, context):
     kf_props = context.scene.gph_keyframe_props
     row = layout.row(align=True)
     
-    # Move backward/forward buttons
-    row.operator("gph.keyframe_mover_backward", text="", icon='BACK')
-    row.operator("gph.keyframe_mover_forward", text="", icon='FORWARD')
+    # Move backward/forward buttons with custom icons
+    backward_icon = get_icon("gph_move_backward")
+    forward_icon = get_icon("gph_move_forward")
+    
+    if backward_icon:
+        row.operator("gph.keyframe_mover_backward", text="", icon_value=backward_icon)
+    else:
+        row.operator("gph.keyframe_mover_backward", text="", icon='BACK')
+    
+    if forward_icon:
+        row.operator("gph.keyframe_mover_forward", text="", icon_value=forward_icon)
+    else:
+        row.operator("gph.keyframe_mover_forward", text="", icon='FORWARD')
     
     # Frame offset input (compact)
     sub = row.row(align=True)
@@ -80,8 +115,13 @@ def draw_gp_helper_header(self, context):
     spacing_props = context.scene.gph_keyframe_spacing_props
     row = layout.row(align=True)
     
-    # Label with icon
-    row.label(text="", icon='KEYFRAME_HLT')
+    # Custom icon for spacing if available
+    spacing_icon = get_icon("gph_keyframe_spacing")
+    
+    if spacing_icon:
+        row.label(text="", icon_value=spacing_icon)
+    else:
+        row.label(text="", icon='KEYFRAME_HLT')
     
     # Spacing value input
     sub = row.row(align=True)

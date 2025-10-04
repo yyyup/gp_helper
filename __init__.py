@@ -21,8 +21,10 @@ if "bpy" in locals():
         importlib.reload(ui)
     if "properties" in locals():
         importlib.reload(properties)
+    if "utils" in locals():
+        importlib.reload(utils)
 
-from . import operators, ui, properties
+from . import operators, ui, properties, utils
 
 modules = [
     properties,
@@ -31,12 +33,20 @@ modules = [
 ]
 
 def register():
+    # Load custom icons first
+    utils.load_icons()
+    
+    # Register modules
     for module in modules:
         module.register()
 
 def unregister():
+    # Unregister modules
     for module in reversed(modules):
         module.unregister()
+    
+    # Unload custom icons
+    utils.unload_icons()
 
 if __name__ == "__main__":
     register()
