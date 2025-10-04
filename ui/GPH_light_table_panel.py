@@ -28,10 +28,12 @@ class GPH_PT_light_table_panel(Panel):
         if props.enabled:
             row.alert = True
             icon = 'OUTLINER_OB_LIGHT'
+            text = "Light Table: ON"
         else:
             icon = 'LIGHT'
+            text = "Light Table: OFF"
 
-        row.prop(props, "enabled", text="Light Table Active", toggle=True, icon=icon)
+        row.operator("gph.toggle_light_table", text=text, icon=icon, depress=props.enabled)
 
         # Reference frame controls
         box = layout.box()

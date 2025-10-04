@@ -47,6 +47,8 @@ class GPH_OT_toggle_light_table(Operator):
         if props.lock_to_current:
             props.reference_frame = context.scene.frame_current
 
+        print(f"Enabling light table with reference_frame = {props.reference_frame}")
+
         # Create reference object
         return self.create_reference_object(context, source_obj)
 
@@ -80,29 +82,29 @@ class GPH_OT_toggle_light_table(Operator):
             # Link to collection
             context.collection.objects.link(ref_obj)
             
-            # Add Time Offset modifier - try direct method first
+            # Add Time Offset modifier
             try:
                 time_mod = ref_obj.modifiers.new(name="Light Table Lock", type='GREASE_PENCIL_TIME')
-                time_mod.mode = 'FIX'  # Fixed: correct enum value
-                time_mod.frame_start = props.reference_frame
-                time_mod.frame_offset = 0
+                time_mod.mode = 'FIX'
+
+                # Debug: print available attributes
+                print(f"Time modifier attributes: {[attr for attr in dir(time_mod) if not attr.startswith('_')]}")
+
+                # Try to set the frame - check what attribute name works
+                if hasattr(time_mod, 'frame'):
+                    time_mod.frame = props.reference_frame
+                elif hasattr(time_mod, 'frame_start'):
+                    time_mod.frame_start = props.reference_frame
+                elif hasattr(time_mod, 'offset'):
+                    time_mod.offset = props.reference_frame
+                else:
+                    print(f"ERROR: Cannot find frame attribute on time modifier!")
+
                 print(f"Created Time Offset modifier locked to frame {props.reference_frame}")
             except Exception as e:
-                print(f"Direct modifier creation failed: {e}")
-                # Try operator method as fallback
-                try:
-                    original_active = context.view_layer.objects.active
-                    context.view_layer.objects.active = ref_obj
-                    bpy.ops.object.modifier_add(type='GREASE_PENCIL_TIME')
-                    time_mod = ref_obj.modifiers[-1]
-                    time_mod.name = "Light Table Lock"
-                    time_mod.mode = 'FIX'  # Fixed: correct enum value
-                    time_mod.frame_start = props.reference_frame
-                    time_mod.frame_offset = 0
-                    context.view_layer.objects.active = original_active
-                    print(f"Created Time Offset modifier via operator locked to frame {props.reference_frame}")
-                except Exception as e2:
-                    print(f"Warning: Could not create Time Offset modifier: {e2}")
+                print(f"Warning: Could not create Time Offset modifier: {e}")
+                import traceback
+                traceback.print_exc()
 
             # Add Tint modifier if enabled
             if props.use_tint:
