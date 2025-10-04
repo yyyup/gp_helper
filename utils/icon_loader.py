@@ -43,7 +43,10 @@ def load_icons():
         "GP_move_back": "gph_move_backward",
         "GP_move_Front": "gph_move_forward",
         "GP_light_table": "gph_light_table",
+        "GP_light_table_A": "gph_light_table_a",
         "GP_flip_flop": "gph_flip_flop",
+        "GP_picker": "gph_picker",
+        "GP_space": "gph_space",
     }
     
     # Load each icon

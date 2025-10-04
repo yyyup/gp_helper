@@ -1,5 +1,6 @@
 import bpy
 from bpy.types import Panel
+from ..utils import get_icon
 
 class GPH_PT_flip_flop_panel(Panel):
     """Panel for flip/flop tool"""
@@ -51,7 +52,7 @@ class GPH_PT_flip_flop_panel(Panel):
         
         col = box.column(align=True)
         col.prop(props, "stored_frame", text="Target Frame")
-        col.operator("gph.set_flip_frame", text="Set to Current", icon='EYEDROPPER')
+        col.operator("gph.set_flip_frame", text="Set to Current", icon_value=get_icon("gph_picker"))
 
         layout.separator()
 

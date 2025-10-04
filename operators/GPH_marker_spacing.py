@@ -1,5 +1,6 @@
 import bpy
 from bpy.types import Operator
+from ..utils import get_all_keyframes
 
 class GPH_OT_marker_spacing(Operator):
     bl_idname = "gph.marker_spacing"
@@ -211,47 +212,14 @@ class GPH_OT_marker_spacing(Operator):
         return sorted(list(set(keyframes)))  # Remove duplicates and sort
 
     def get_gp_keyframes(self, obj):
-        """Get all keyframe positions from a GP object."""
-        keyframes = []
-
+        """Get all keyframe positions from a GP object - uses wrapper."""
         if obj.type != 'GREASEPENCIL':
-            return keyframes
+            return []
 
-        print(f"DEBUG: Analyzing {obj.name}")
-        print(f"DEBUG: Object has animation_data: {obj.animation_data is not None}")
-
-        # Method 1: Check object-level animation data
-        if obj.animation_data and obj.animation_data.action:
-            print(f"DEBUG: Found object animation data with action: {obj.animation_data.action.name}")
-            for fcurve in obj.animation_data.action.fcurves:
-                print(f"DEBUG: FCurve: {fcurve.data_path}")
-                for keyframe in fcurve.keyframe_points:
-                    frame = int(keyframe.co[0])
-                    keyframes.append(frame)
-
-        # Method 2: Check GP data-level animation
-        gp_data = obj.data
-        print(f"DEBUG: GP data has animation_data: {gp_data.animation_data is not None}")
-        if gp_data.animation_data and gp_data.animation_data.action:
-            print(f"DEBUG: Found GP data animation with action: {gp_data.animation_data.action.name}")
-            for fcurve in gp_data.animation_data.action.fcurves:
-                print(f"DEBUG: GP FCurve: {fcurve.data_path}")
-                for keyframe in fcurve.keyframe_points:
-                    frame = int(keyframe.co[0])
-                    keyframes.append(frame)
-
-        # Method 3: Check layer-level keyframes (GP-specific)
-        print(f"DEBUG: GP has {len(gp_data.layers)} layers")
-        for layer in gp_data.layers:
-            # Try different attribute names for layer name (Blender version differences)
-            layer_name = getattr(layer, 'info', getattr(layer, 'name', 'Unknown'))
-            print(f"DEBUG: Layer '{layer_name}' has {len(layer.frames)} frames")
-            for frame in layer.frames:
-                keyframes.append(frame.frame_number)
-
-        unique_keyframes = sorted(list(set(keyframes)))
-        print(f"DEBUG: Total unique keyframes found: {len(unique_keyframes)} - {unique_keyframes}")
-        return unique_keyframes
+        # Use the centralized wrapper function
+        keyframes = get_all_keyframes(obj)
+        print(f"DEBUG: Total unique keyframes found: {len(keyframes)} - {keyframes}")
+        return keyframes
 
     def get_keyframes_after_frame(self, obj, frame):
         """Get all keyframes that come after the specified frame."""

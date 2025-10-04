@@ -1,5 +1,6 @@
 import bpy
 from bpy.types import Operator
+from ..utils import has_keyframe_at_frame, get_keyframes_after_frame, get_all_keyframes_in_range
 
 class GPH_OT_keyframe_mover_forward(Operator):
     """Move all keyframes from playhead onward by the specified number of frames to the right"""
@@ -37,7 +38,7 @@ class GPH_OT_keyframe_mover_backward(Operator):
         frame_offset = context.scene.gph_keyframe_props.frame_offset
 
         # Get all keyframes that will be affected (keyframes after current frame)
-        affected_keyframes = self.get_keyframes_after_frame(context, current_frame)
+        affected_keyframes = get_keyframes_after_frame(context.active_object, current_frame)
 
         if not affected_keyframes:
             self.report({'INFO'}, "No keyframes found after playhead to move")
@@ -53,148 +54,8 @@ class GPH_OT_keyframe_mover_backward(Operator):
         if safe_offset < frame_offset:
             self.report({'WARNING'}, f"Reduced offset from {frame_offset} to {safe_offset} frames to avoid collision")
 
-        # Check if there's ANY keyframe at the playhead position (original check)
-        keyframe_at_playhead = False
-
-        print(f"DEBUG: Checking for GP keyframes at frame {current_frame}")
-
-        # Check GP object specifically
-        if (context.active_object and
-            context.active_object.type == 'GREASEPENCIL' and
-            context.active_object.data and
-            context.active_object.data.layers):
-
-            gpencil_data = context.active_object.data
-            print(f"DEBUG: GP object '{context.active_object.name}' has {len(gpencil_data.layers)} layers")
-
-            # Check all layers in the active GP object
-            for layer in gpencil_data.layers:
-                print(f"DEBUG: Checking layer '{layer.name}' (locked: {layer.lock}, hidden: {layer.hide})")
-
-                # Only check layers that are not locked and are visible
-                if not layer.lock and not layer.hide:
-                    # Check drawing keyframes
-                    print(f"DEBUG: Layer '{layer.name}' has {len(layer.frames)} drawing frames")
-                    for frame in layer.frames:
-                        print(f"DEBUG: Drawing frame at {frame.frame_number}")
-                        if frame.frame_number == current_frame:
-                            keyframe_at_playhead = True
-                            print(f"DEBUG: FOUND GP drawing keyframe at frame {current_frame}")
-                            break
-
-                    # Check if layer has any animated properties
-                    print(f"DEBUG: Checking layer '{layer.name}' for animated properties...")
-                    print(f"DEBUG: Layer opacity: {layer.opacity}")
-                    print(f"DEBUG: Layer tint_color: {layer.tint_color}")
-                    print(f"DEBUG: Layer tint_factor: {layer.tint_factor}")
-
-                    # Check if the GP object has animation data that affects this layer
-                    if context.active_object.animation_data and context.active_object.animation_data.action:
-                        print(f"DEBUG: GP object has animation data")
-                        action = context.active_object.animation_data.action
-                        for fcurve in action.fcurves:
-                            print(f"DEBUG: FCurve: {fcurve.data_path}")
-                            if f'layers["{layer.name}"]' in fcurve.data_path:
-                                print(f"DEBUG: Found layer-specific fcurve: {fcurve.data_path}")
-                                for keyframe in fcurve.keyframe_points:
-                                    print(f"DEBUG: Layer attribute keyframe at {keyframe.co[0]}")
-                                    if abs(keyframe.co[0] - current_frame) < 0.01:
-                                        keyframe_at_playhead = True
-                                        print(f"DEBUG: FOUND GP layer attribute keyframe at frame {current_frame} ({fcurve.data_path})")
-                                        break
-                    else:
-                        print(f"DEBUG: No animation data found on GP object")
-
-                    # Check if the GP data itself has animation data
-                    if gpencil_data.animation_data and gpencil_data.animation_data.action:
-                        print(f"DEBUG: GP data has animation data")
-                        action = gpencil_data.animation_data.action
-                        for fcurve in action.fcurves:
-                            print(f"DEBUG: GP Data FCurve: {fcurve.data_path}")
-                            if f'layers["{layer.name}"]' in fcurve.data_path:
-                                print(f"DEBUG: Found GP data layer-specific fcurve: {fcurve.data_path}")
-                                for keyframe in fcurve.keyframe_points:
-                                    print(f"DEBUG: GP data layer attribute keyframe at {keyframe.co[0]}")
-                                    if abs(keyframe.co[0] - current_frame) < 0.01:
-                                        keyframe_at_playhead = True
-                                        print(f"DEBUG: FOUND GP data layer attribute keyframe at frame {current_frame} ({fcurve.data_path})")
-                                        break
-                    else:
-                        print(f"DEBUG: No animation data found on GP data")
-
-                    if keyframe_at_playhead:
-                        break
-
-            # Also check GP materials for animated properties
-            if not keyframe_at_playhead and gpencil_data.materials:
-                print(f"DEBUG: Checking {len(gpencil_data.materials)} GP materials")
-                for i, material in enumerate(gpencil_data.materials):
-                    if material and material.animation_data and material.animation_data.action:
-                        print(f"DEBUG: Material '{material.name}' has animation data")
-                        action = material.animation_data.action
-                        for fcurve in action.fcurves:
-                            print(f"DEBUG: Material FCurve: {fcurve.data_path}")
-                            for keyframe in fcurve.keyframe_points:
-                                print(f"DEBUG: Material keyframe at {keyframe.co[0]}")
-                                if abs(keyframe.co[0] - current_frame) < 0.01:
-                                    keyframe_at_playhead = True
-                                    print(f"DEBUG: FOUND GP material keyframe at frame {current_frame} - Material: '{material.name}' ({fcurve.data_path})")
-                                    break
-                            if keyframe_at_playhead:
-                                break
-                    else:
-                        print(f"DEBUG: Material '{material.name if material else 'None'}' has no animation data")
-                    if keyframe_at_playhead:
-                        break
-
-            # Check GP modifiers for animated properties (stored in object animation_data)
-            if not keyframe_at_playhead and context.active_object.modifiers and context.active_object.animation_data and context.active_object.animation_data.action:
-                print(f"DEBUG: Checking {len(context.active_object.modifiers)} modifiers")
-                action = context.active_object.animation_data.action
-
-                for modifier in context.active_object.modifiers:
-                    modifier_path_prefix = f'modifiers["{modifier.name}"]'
-                    print(f"DEBUG: Looking for modifier '{modifier.name}' keyframes with path: {modifier_path_prefix}")
-
-                    for fcurve in action.fcurves:
-                        if fcurve.data_path.startswith(modifier_path_prefix):
-                            print(f"DEBUG: Found modifier FCurve: {fcurve.data_path}")
-                            for keyframe in fcurve.keyframe_points:
-                                print(f"DEBUG: Modifier keyframe at {keyframe.co[0]}")
-                                if abs(keyframe.co[0] - current_frame) < 0.01:
-                                    keyframe_at_playhead = True
-                                    print(f"DEBUG: FOUND GP modifier keyframe at frame {current_frame} - Modifier: '{modifier.name}' ({fcurve.data_path})")
-                                    break
-                            if keyframe_at_playhead:
-                                break
-                    if keyframe_at_playhead:
-                        break
-
-            # Check GP shader effects for animated properties (stored in object animation_data)
-            if not keyframe_at_playhead and context.active_object.shader_effects and context.active_object.animation_data and context.active_object.animation_data.action:
-                print(f"DEBUG: Checking {len(context.active_object.shader_effects)} GP shader effects")
-                action = context.active_object.animation_data.action
-
-                for effect in context.active_object.shader_effects:
-                    effect_path_prefix = f'shader_effects["{effect.name}"]'
-                    print(f"DEBUG: Looking for effect '{effect.name}' keyframes with path: {effect_path_prefix}")
-
-                    for fcurve in action.fcurves:
-                        if fcurve.data_path.startswith(effect_path_prefix):
-                            print(f"DEBUG: Found effect FCurve: {fcurve.data_path}")
-                            for keyframe in fcurve.keyframe_points:
-                                print(f"DEBUG: Effect keyframe at {keyframe.co[0]}")
-                                if abs(keyframe.co[0] - current_frame) < 0.01:
-                                    keyframe_at_playhead = True
-                                    print(f"DEBUG: FOUND GP effect keyframe at frame {current_frame} - Effect: '{effect.name}' ({fcurve.data_path})")
-                                    break
-                            if keyframe_at_playhead:
-                                break
-                    if keyframe_at_playhead:
-                        break
-
-        # If there's a keyframe at the playhead, stop and show warning
-        if keyframe_at_playhead:
+        # Check if there's a keyframe at the playhead
+        if has_keyframe_at_frame(context.active_object, current_frame):
             self.report({'WARNING'}, "Cannot move backwards - keyframe detected at playhead")
             return {'CANCELLED'}
 
@@ -204,84 +65,6 @@ class GPH_OT_keyframe_mover_backward(Operator):
         bpy.ops.transform.transform(mode='TIME_TRANSLATE', value=(-safe_offset, 0, 0, 0))
 
         return {'FINISHED'}
-
-    def get_keyframes_after_frame(self, context, frame):
-        """Get all keyframes that come after the specified frame."""
-        keyframes = []
-
-        # Check GP object specifically
-        if (context.active_object and
-            context.active_object.type == 'GREASEPENCIL' and
-            context.active_object.data and
-            context.active_object.data.layers):
-
-            gpencil_data = context.active_object.data
-
-            # Check drawing keyframes in all layers
-            for layer in gpencil_data.layers:
-                if not layer.lock and not layer.hide:
-                    for gp_frame in layer.frames:
-                        if gp_frame.frame_number > frame:
-                            keyframes.append(gp_frame.frame_number)
-
-            # Check object-level animation keyframes
-            if context.active_object.animation_data and context.active_object.animation_data.action:
-                action = context.active_object.animation_data.action
-                for fcurve in action.fcurves:
-                    for keyframe in fcurve.keyframe_points:
-                        kf_frame = int(keyframe.co[0])
-                        if kf_frame > frame:
-                            keyframes.append(kf_frame)
-
-            # Check GP data-level animation keyframes
-            if gpencil_data.animation_data and gpencil_data.animation_data.action:
-                action = gpencil_data.animation_data.action
-                for fcurve in action.fcurves:
-                    for keyframe in fcurve.keyframe_points:
-                        kf_frame = int(keyframe.co[0])
-                        if kf_frame > frame:
-                            keyframes.append(kf_frame)
-
-        return sorted(list(set(keyframes)))
-
-    def get_all_keyframes_in_range(self, context, start_frame, end_frame):
-        """Get all keyframes in the specified range (inclusive)."""
-        keyframes = []
-
-        # Check GP object specifically
-        if (context.active_object and
-            context.active_object.type == 'GREASEPENCIL' and
-            context.active_object.data and
-            context.active_object.data.layers):
-
-            gpencil_data = context.active_object.data
-
-            # Check drawing keyframes in all layers
-            for layer in gpencil_data.layers:
-                if not layer.lock and not layer.hide:
-                    for gp_frame in layer.frames:
-                        if start_frame <= gp_frame.frame_number <= end_frame:
-                            keyframes.append(gp_frame.frame_number)
-
-            # Check object-level animation keyframes
-            if context.active_object.animation_data and context.active_object.animation_data.action:
-                action = context.active_object.animation_data.action
-                for fcurve in action.fcurves:
-                    for keyframe in fcurve.keyframe_points:
-                        kf_frame = int(keyframe.co[0])
-                        if start_frame <= kf_frame <= end_frame:
-                            keyframes.append(kf_frame)
-
-            # Check GP data-level animation keyframes
-            if gpencil_data.animation_data and gpencil_data.animation_data.action:
-                action = gpencil_data.animation_data.action
-                for fcurve in action.fcurves:
-                    for keyframe in fcurve.keyframe_points:
-                        kf_frame = int(keyframe.co[0])
-                        if start_frame <= kf_frame <= end_frame:
-                            keyframes.append(kf_frame)
-
-        return sorted(list(set(keyframes)))
 
     def calculate_safe_backward_offset(self, context, current_frame, desired_offset, affected_keyframes):
         """Calculate the maximum safe offset to avoid keyframe collisions."""
@@ -301,7 +84,7 @@ class GPH_OT_keyframe_mover_backward(Operator):
         # between current_frame and the closest existing keyframe to the left
 
         # Get all existing keyframes before current frame to find collision boundaries
-        all_existing_keyframes = self.get_all_keyframes_in_range(context, 1, current_frame)
+        all_existing_keyframes = get_all_keyframes_in_range(context.active_object, 1, current_frame)
 
         # Find the closest existing keyframe to the left of current frame
         closest_left_keyframe = None

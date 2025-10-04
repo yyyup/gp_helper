@@ -1,5 +1,6 @@
 import bpy
 from bpy.types import Panel
+from ..utils import get_icon
 
 class GPH_PT_light_table_panel(Panel):
     """Panel for light table / reference frame"""
@@ -25,15 +26,20 @@ class GPH_PT_light_table_panel(Panel):
         row = box.row()
         row.scale_y = 1.5
 
+        # Get custom light table icon with alpha
+        light_table_icon = get_icon("gph_light_table_a")
+
         if props.enabled:
             row.alert = True
-            icon = 'OUTLINER_OB_LIGHT'
             text = "Light Table: ON"
         else:
-            icon = 'LIGHT'
             text = "Light Table: OFF"
 
-        row.operator("gph.toggle_light_table", text=text, icon=icon, depress=props.enabled)
+        if light_table_icon and light_table_icon > 0:
+            row.operator("gph.toggle_light_table", text=text, icon_value=light_table_icon, depress=props.enabled)
+        else:
+            icon = 'OUTLINER_OB_LIGHT' if props.enabled else 'LIGHT'
+            row.operator("gph.toggle_light_table", text=text, icon=icon, depress=props.enabled)
 
         # Reference frame controls
         box = layout.box()
@@ -42,7 +48,7 @@ class GPH_PT_light_table_panel(Panel):
         col = box.column(align=True)
         row = col.row(align=True)
         row.prop(props, "reference_frame", text="Frame")
-        row.operator("gph.set_reference_frame", text="", icon='EYEDROPPER')
+        row.operator("gph.set_reference_frame", text="", icon_value=get_icon("gph_picker"))
 
         col.operator("gph.jump_to_reference", text="Jump to Reference", icon='PLAY')
 

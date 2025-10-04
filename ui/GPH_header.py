@@ -19,6 +19,30 @@ def draw_gp_helper_header(self, context):
     
     layout.separator()
     
+        # === KEYFRAME MOVER ===
+    kf_props = context.scene.gph_keyframe_props
+    row = layout.row(align=True)
+    
+    # Move backward/forward buttons with custom icons
+    backward_icon = get_icon("gph_move_backward")
+    forward_icon = get_icon("gph_move_forward")
+    
+    if backward_icon and backward_icon > 0:
+        row.operator("gph.keyframe_mover_backward", text="", icon_value=backward_icon)
+    else:
+        row.operator("gph.keyframe_mover_backward", text="", icon='BACK')
+    
+    if forward_icon and forward_icon > 0:
+        row.operator("gph.keyframe_mover_forward", text="", icon_value=forward_icon)
+    else:
+        row.operator("gph.keyframe_mover_forward", text="", icon='FORWARD')
+    
+    # Frame offset input (compact)
+    sub = row.row(align=True)
+    sub.scale_x = 0.5
+    sub.prop(kf_props, "frame_offset", text="")
+    
+    
     # === FLIP/FLOP - Most frequently used ===
     props = context.scene.gph_flip_flop_props
     row = layout.row(align=True)
@@ -40,9 +64,9 @@ def draw_gp_helper_header(self, context):
     sub.prop(props, "stored_frame", text="")
     
     # Set button
-    row.operator("gph.set_flip_frame", text="", icon='EYEDROPPER')
+    row.operator("gph.set_flip_frame", text="", icon_value=get_icon("gph_picker"))
     
-    layout.separator()
+    #layout.separator()
     
     # === LIGHT TABLE ===
     lt_props = context.scene.gph_light_table_props
@@ -74,58 +98,34 @@ def draw_gp_helper_header(self, context):
     sub.prop(lt_props, "reference_frame", text="")
     
     # Eyedropper to set reference
-    row.operator("gph.set_reference_frame", text="", icon='EYEDROPPER')
+    row.operator("gph.set_reference_frame", text="", icon_value=get_icon("gph_picker"))
     
-    layout.separator()
+    #layout.separator()
     
-    # === KEYFRAME MOVER ===
-    kf_props = context.scene.gph_keyframe_props
-    row = layout.row(align=True)
+
     
-    # Move backward/forward buttons with custom icons
-    backward_icon = get_icon("gph_move_backward")
-    forward_icon = get_icon("gph_move_forward")
-    
-    if backward_icon and backward_icon > 0:
-        row.operator("gph.keyframe_mover_backward", text="", icon_value=backward_icon)
-    else:
-        row.operator("gph.keyframe_mover_backward", text="", icon='BACK')
-    
-    if forward_icon and forward_icon > 0:
-        row.operator("gph.keyframe_mover_forward", text="", icon_value=forward_icon)
-    else:
-        row.operator("gph.keyframe_mover_forward", text="", icon='FORWARD')
-    
-    # Frame offset input (compact)
-    sub = row.row(align=True)
-    sub.scale_x = 0.5
-    sub.prop(kf_props, "frame_offset", text="")
-    
-    layout.separator()
+    #layout.separator()
     
     # === KEYFRAME SPACING ===
     spacing_props = context.scene.gph_keyframe_spacing_props
     row = layout.row(align=True)
-    
-    # Custom icon for spacing if available
-    spacing_icon = get_icon("gph_keyframe_spacing")
-    
-    if spacing_icon and spacing_icon > 0:
-        row.label(text="", icon_value=spacing_icon)
-    else:
-        row.label(text="", icon='KEYFRAME_HLT')
-    
+
     # Spacing value input
     sub = row.row(align=True)
     sub.scale_x = 0.6
     sub.prop(spacing_props, "spacing_frames", text="")
-    
-    # Apply button
-    op = row.operator("gph.keyframe_spacing", text="Space", icon='KEYFRAME')
+
+    # Apply button with custom icon
+    spacing_icon = get_icon("gph_space")
+    op_row = row.row(align=True)
+    if spacing_icon and spacing_icon > 0:
+        op = op_row.operator("gph.keyframe_spacing", text="", icon_value=spacing_icon)
+    else:
+        op = op_row.operator("gph.keyframe_spacing", text="", icon='KEYFRAME')
     op.spacing_frames = spacing_props.spacing_frames
     op.ripple_edit = spacing_props.ripple_edit
     
-    layout.separator()
+    #layout.separator()
 
     # === MORE TOOLS MENU ===
     layout.menu("DOPESHEET_MT_gp_helper_tools", text="", icon='DOWNARROW_HLT')
