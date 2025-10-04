@@ -8,6 +8,7 @@ from .GPH_onion_skin_panel import GPH_PT_onion_skin_panel
 from .GPH_breakdown_panel import GPH_PT_breakdown_panel
 from .GPH_flip_flop_panel import GPH_PT_flip_flop_panel
 from .GPH_light_table_panel import GPH_PT_light_table_panel
+from .GPH_layer_manager_panel import GPH_PT_layer_manager_panel, GPH_UL_layer_list
 
 # Import header components
 from .GPH_header import DOPESHEET_MT_gp_helper_tools, draw_gp_helper_header
@@ -15,6 +16,9 @@ from .GPH_header import DOPESHEET_MT_gp_helper_tools, draw_gp_helper_header
 classes = (
     # Header menu
     DOPESHEET_MT_gp_helper_tools,
+    
+    # UIList for layers
+    GPH_UL_layer_list,
     
     # Sidebar panels (N-panel)
     GPH_PT_keyframe_spacing_panel,
@@ -25,6 +29,7 @@ classes = (
     GPH_PT_flip_flop_panel,
     GPH_PT_breakdown_panel,
     GPH_PT_light_table_panel,
+    GPH_PT_layer_manager_panel,
 )
 
 def register():

@@ -12,6 +12,9 @@ from .GPH_dissolve_automation import GPH_OT_dissolve_setup, GPH_OT_dissolve_refr
 from .GPH_marker_spacing import GPH_OT_marker_spacing, GPH_OT_clear_markers, GPH_OT_add_gp_marker
 from .GPH_keyframe_spacing import GPH_OT_keyframe_spacing
 
+
+
+
 # NEW IMPORTS
 from .GPH_breakdown import (
     GPH_OT_add_breakdown,
@@ -33,6 +36,16 @@ from .GPH_light_table import (
     GPH_OT_update_light_table,
     GPH_OT_clear_reference,
     GPH_OT_jump_to_reference
+)
+
+from .GPH_layer_operations import (
+    GPH_OT_layer_solo,
+    GPH_OT_layer_duplicate,
+    GPH_OT_layer_make_active,
+    GPH_OT_layer_move_up,
+    GPH_OT_layer_move_down,
+    GPH_OT_layer_add,
+    GPH_OT_layer_remove,
 )
 from .GPH_refresh_icons import GPH_OT_refresh_icons
 
@@ -71,6 +84,15 @@ classes = (
     GPH_OT_update_light_table,
     GPH_OT_clear_reference,
     GPH_OT_jump_to_reference,
+    
+    # NEW: Layer management operators
+    GPH_OT_layer_solo,
+    GPH_OT_layer_duplicate,
+    GPH_OT_layer_make_active,
+    GPH_OT_layer_move_up,
+    GPH_OT_layer_move_down,
+    GPH_OT_layer_add,
+    GPH_OT_layer_remove,
 
     # NEW: Utility operators
     GPH_OT_refresh_icons,
