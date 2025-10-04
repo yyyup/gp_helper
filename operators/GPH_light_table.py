@@ -1,6 +1,117 @@
 import bpy
 from bpy.types import Operator
 
+# Helper function to get source object (shared by all operators)
+def get_source_gp_object(context):
+    """Get the source GP object, even if duplicate is selected"""
+    obj = context.active_object
+    
+    if not obj or obj.type != 'GREASEPENCIL':
+        return None
+    
+    # Check if this is a light table reference duplicate
+    if "_LIGHT_TABLE_REF" in obj.name:
+        # This is a duplicate, find the original
+        original_name = obj.name.replace("_LIGHT_TABLE_REF", "")
+        if original_name in bpy.data.objects:
+            return bpy.data.objects[original_name]
+        else:
+            # Fallback: search for any object that references this duplicate
+            for potential_source in bpy.data.objects:
+                if potential_source.type == 'GREASEPENCIL':
+                    ref_name = potential_source.get("gph_light_table_ref")
+                    if ref_name == obj.name:
+                        return potential_source
+    
+    return obj
+
+
+def disable_light_table(context, source_obj):
+    """Remove light table reference"""
+    # Find and remove reference object
+    ref_obj_name = source_obj.get("gph_light_table_ref")
+
+    if ref_obj_name and ref_obj_name in bpy.data.objects:
+        ref_obj = bpy.data.objects[ref_obj_name]
+        bpy.data.objects.remove(ref_obj, do_unlink=True)
+
+        if "gph_light_table_ref" in source_obj:
+            del source_obj["gph_light_table_ref"]
+
+
+def create_reference_object(context, source_obj):
+    """Create duplicate GP object for reference"""
+    props = context.scene.gph_light_table_props
+    
+    # Remove old reference if exists
+    disable_light_table(context, source_obj)
+    
+    try:
+        # Duplicate the GP object
+        ref_obj = source_obj.copy()
+        ref_obj.data = source_obj.data  # Link to same data
+        ref_obj.name = f"{source_obj.name}_LIGHT_TABLE_REF"
+        
+        # Link to collection
+        context.collection.objects.link(ref_obj)
+        
+        # Clear all modifiers from the duplicate for a clean reference
+        ref_obj.modifiers.clear()
+        print(f"Cleared {len(source_obj.modifiers)} modifiers from reference object")
+        
+        # Add Time Offset modifier
+        try:
+            time_mod = ref_obj.modifiers.new(name="Light Table Lock", type='GREASE_PENCIL_TIME')
+            time_mod.mode = 'FIX'
+
+            # For Grease Pencil v3 Time Offset modifier, use 'offset' attribute
+            time_mod.offset = props.reference_frame
+            
+            print(f"Created Time Offset modifier locked to frame {props.reference_frame}")
+            print(f"Time modifier offset value: {time_mod.offset}")
+            
+        except Exception as e:
+            print(f"Warning: Could not create Time Offset modifier: {e}")
+            import traceback
+            traceback.print_exc()
+
+        # Add Tint modifier if enabled
+        if props.use_tint:
+            try:
+                tint_mod = ref_obj.modifiers.new(name="Light Table Tint", type='GREASE_PENCIL_TINT')
+                tint_mod.color = props.tint_color
+                tint_mod.factor = 1.0
+                print("Created Tint modifier")
+            except Exception as e:
+                print(f"Warning: Could not create Tint modifier: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Set opacity
+        ref_obj.color[3] = props.opacity
+        
+        # Set display properties
+        ref_obj.show_in_front = props.show_in_front
+        ref_obj.hide_render = True
+        ref_obj.hide_select = True
+        
+        # Store reference
+        source_obj["gph_light_table_ref"] = ref_obj.name
+        
+        # Tag for redraw
+        for area in context.screen.areas:
+            if area.type == 'VIEW_3D':
+                area.tag_redraw()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error creating light table reference: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 class GPH_OT_toggle_light_table(Operator):
     """Toggle light table visibility"""
     bl_idname = "gph.toggle_light_table"
@@ -18,7 +129,7 @@ class GPH_OT_toggle_light_table(Operator):
         print(f"Light table toggle execute - currently enabled: {props.enabled}")
         
         # Get the actual source object (not the reference duplicate)
-        source_obj = self.get_source_object(context)
+        source_obj = get_source_gp_object(context)
         if not source_obj:
             self.report({'ERROR'}, "No valid Grease Pencil object found")
             return {'CANCELLED'}
@@ -26,13 +137,18 @@ class GPH_OT_toggle_light_table(Operator):
         if props.enabled:
             # Disable light table
             print("Disabling light table...")
-            self.disable_light_table(context, source_obj)
+            disable_light_table(context, source_obj)
             props.enabled = False
             self.report({'INFO'}, "Light table disabled")
         else:
             # Enable light table
             print("Enabling light table...")
-            success = self.enable_light_table(context, source_obj)
+            
+            # Store reference frame if lock_to_current
+            if props.lock_to_current:
+                props.reference_frame = context.scene.frame_current
+            
+            success = create_reference_object(context, source_obj)
             if success:
                 props.enabled = True
                 self.report({'INFO'}, "Light table enabled")
@@ -43,126 +159,6 @@ class GPH_OT_toggle_light_table(Operator):
                 return {'CANCELLED'}
 
         return {'FINISHED'}
-    
-    def get_source_object(self, context):
-        """Get the source GP object, even if duplicate is selected"""
-        obj = context.active_object
-        
-        if not obj or obj.type != 'GREASEPENCIL':
-            return None
-        
-        # Check if this is a light table reference duplicate
-        if "_LIGHT_TABLE_REF" in obj.name:
-            # This is a duplicate, find the original
-            original_name = obj.name.replace("_LIGHT_TABLE_REF", "")
-            if original_name in bpy.data.objects:
-                return bpy.data.objects[original_name]
-            else:
-                # Fallback: search for any object that references this duplicate
-                for potential_source in bpy.data.objects:
-                    if potential_source.type == 'GREASEPENCIL':
-                        ref_name = potential_source.get("gph_light_table_ref")
-                        if ref_name == obj.name:
-                            return potential_source
-        
-        return obj
-
-    def enable_light_table(self, context, source_obj):
-        """Create and show light table reference"""
-        props = context.scene.gph_light_table_props
-
-        # Store reference frame if lock_to_current
-        if props.lock_to_current:
-            props.reference_frame = context.scene.frame_current
-
-        print(f"Enabling light table with reference_frame = {props.reference_frame}")
-
-        # Create reference object
-        return self.create_reference_object(context, source_obj)
-
-    def disable_light_table(self, context, source_obj):
-        """Remove light table reference"""
-        # Find and remove reference object
-        ref_obj_name = source_obj.get("gph_light_table_ref")
-
-        if ref_obj_name and ref_obj_name in bpy.data.objects:
-            ref_obj = bpy.data.objects[ref_obj_name]
-            bpy.data.objects.remove(ref_obj, do_unlink=True)
-
-            if "gph_light_table_ref" in source_obj:
-                del source_obj["gph_light_table_ref"]
-
-    def create_reference_object(self, context, source_obj):
-        """Create duplicate GP object for reference"""
-        props = context.scene.gph_light_table_props
-        
-        # Remove old reference if exists
-        self.disable_light_table(context, source_obj)
-        
-        try:
-            # Duplicate the GP object
-            ref_obj = source_obj.copy()
-            ref_obj.data = source_obj.data  # Link to same data
-            ref_obj.name = f"{source_obj.name}_LIGHT_TABLE_REF"
-            
-            # Link to collection
-            context.collection.objects.link(ref_obj)
-            
-            # Clear all modifiers from the duplicate for a clean reference
-            ref_obj.modifiers.clear()
-            print(f"Cleared {len(source_obj.modifiers)} modifiers from reference object")
-            
-            # Add Time Offset modifier
-            try:
-                time_mod = ref_obj.modifiers.new(name="Light Table Lock", type='GREASE_PENCIL_TIME')
-                time_mod.mode = 'FIX'
-
-                # For Grease Pencil v3 Time Offset modifier, use 'offset' attribute
-                time_mod.offset = props.reference_frame
-                
-                print(f"Created Time Offset modifier locked to frame {props.reference_frame}")
-                print(f"Time modifier offset value: {time_mod.offset}")
-                
-            except Exception as e:
-                print(f"Warning: Could not create Time Offset modifier: {e}")
-                import traceback
-                traceback.print_exc()
-
-            # Add Tint modifier if enabled
-            if props.use_tint:
-                try:
-                    tint_mod = ref_obj.modifiers.new(name="Light Table Tint", type='GREASE_PENCIL_TINT')
-                    tint_mod.color = props.tint_color
-                    tint_mod.factor = 1.0
-                    print("Created Tint modifier")
-                except Exception as e:
-                    print(f"Warning: Could not create Tint modifier: {e}")
-                    import traceback
-                    traceback.print_exc()
-            
-            # Set opacity
-            ref_obj.color[3] = props.opacity
-            
-            # Set display properties
-            ref_obj.show_in_front = props.show_in_front
-            ref_obj.hide_render = True
-            ref_obj.hide_select = True
-            
-            # Store reference
-            source_obj["gph_light_table_ref"] = ref_obj.name
-            
-            # Tag for redraw
-            for area in context.screen.areas:
-                if area.type == 'VIEW_3D':
-                    area.tag_redraw()
-            
-            return True
-            
-        except Exception as e:
-            print(f"Error creating light table reference: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
 
 
 class GPH_OT_set_reference_frame(Operator):
@@ -176,8 +172,7 @@ class GPH_OT_set_reference_frame(Operator):
         props = context.scene.gph_light_table_props
         
         # Get the actual source object (not the reference duplicate)
-        toggle_op = GPH_OT_toggle_light_table()
-        source_obj = toggle_op.get_source_object(context)
+        source_obj = get_source_gp_object(context)
         
         if not source_obj:
             self.report({'ERROR'}, "No valid Grease Pencil object found")
@@ -203,8 +198,7 @@ class GPH_OT_update_light_table(Operator):
         props = context.scene.gph_light_table_props
         
         # Get the actual source object (not the reference duplicate)
-        toggle_op = GPH_OT_toggle_light_table()
-        source_obj = toggle_op.get_source_object(context)
+        source_obj = get_source_gp_object(context)
 
         if not props.enabled or not source_obj:
             return {'CANCELLED'}
@@ -262,12 +256,11 @@ class GPH_OT_clear_reference(Operator):
 
         if props.enabled:
             # Get the actual source object before disabling
-            toggle_op = GPH_OT_toggle_light_table()
-            source_obj = toggle_op.get_source_object(context)
+            source_obj = get_source_gp_object(context)
             
             if source_obj:
                 # Disable using the source object
-                toggle_op.disable_light_table(context, source_obj)
+                disable_light_table(context, source_obj)
                 props.enabled = False
 
         props.reference_frame = 1
