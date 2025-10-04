@@ -82,25 +82,21 @@ class GPH_OT_toggle_light_table(Operator):
             # Link to collection
             context.collection.objects.link(ref_obj)
             
+            # Clear all modifiers from the duplicate for a clean reference
+            ref_obj.modifiers.clear()
+            print(f"Cleared {len(source_obj.modifiers)} modifiers from reference object")
+            
             # Add Time Offset modifier
             try:
                 time_mod = ref_obj.modifiers.new(name="Light Table Lock", type='GREASE_PENCIL_TIME')
                 time_mod.mode = 'FIX'
 
-                # Debug: print available attributes
-                print(f"Time modifier attributes: {[attr for attr in dir(time_mod) if not attr.startswith('_')]}")
-
-                # Try to set the frame - check what attribute name works
-                if hasattr(time_mod, 'frame'):
-                    time_mod.frame = props.reference_frame
-                elif hasattr(time_mod, 'frame_start'):
-                    time_mod.frame_start = props.reference_frame
-                elif hasattr(time_mod, 'offset'):
-                    time_mod.offset = props.reference_frame
-                else:
-                    print(f"ERROR: Cannot find frame attribute on time modifier!")
-
+                # For Grease Pencil v3 Time Offset modifier, use 'offset' attribute
+                time_mod.offset = props.reference_frame
+                
                 print(f"Created Time Offset modifier locked to frame {props.reference_frame}")
+                print(f"Time modifier offset value: {time_mod.offset}")
+                
             except Exception as e:
                 print(f"Warning: Could not create Time Offset modifier: {e}")
                 import traceback
@@ -192,11 +188,12 @@ class GPH_OT_update_light_table(Operator):
         # Update show in front
         ref_obj.show_in_front = props.show_in_front
 
-        # Update time offset modifier
+        # Update time offset modifier - use 'offset' attribute
         for mod in ref_obj.modifiers:
             if mod.type == 'GREASE_PENCIL_TIME' and mod.name == "Light Table Lock":
-                mod.frame_start = props.reference_frame
+                mod.offset = props.reference_frame
                 print(f"Updated Time Offset modifier to frame {props.reference_frame}")
+                print(f"Time modifier offset value: {mod.offset}")
 
         # Update tint modifier
         for mod in ref_obj.modifiers:
